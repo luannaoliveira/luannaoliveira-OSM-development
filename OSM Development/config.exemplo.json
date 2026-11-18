@@ -1,0 +1,15 @@
+{
+  "ia": {
+    "ativo": false,
+    "provedor": "azure",
+    "endpoint": "https://NOME-DO-RECURSO.openai.azure.com",
+    "deployment": "NOME-DO-DEPLOYMENT",
+    "api_version": "2024-10-21",
+    "modelo": "",
+    "api_key": "",
+    "api_key_env": "REPASSE_IA_KEY",
+    "max_caracteres": 200000,
+    "timeout_segundos": 300,
+    "ca_bundle": ""
+  }
+}

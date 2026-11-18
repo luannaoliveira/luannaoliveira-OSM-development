@@ -1,0 +1,299 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>OSM Development</title>
+<style>
+:root{
+  --bg:#f6f7f9; --panel:#fff; --panel2:#f0f2f5; --ink:#1b1f24; --muted:#5b6470; --line:#dde1e6;
+  --accent:#C2410C; --accent-soft:#FFEDD5; --fill:#F97316; --on-fill:#141B2D; --ok:#1f7a4d; --ok-bg:#e3f4ea; --del:#b42318; --del-bg:#fde8e6;
+  --warn:#8a5a00; --warn-bg:#fff4d6; --shadow:0 1px 2px rgba(16,24,40,.06),0 1px 3px rgba(16,24,40,.08);
+}
+@media (prefers-color-scheme: dark){
+  :root{ --bg:#0d1220; --panel:#141B2D; --panel2:#1b2438; --ink:#e6e9ee; --muted:#9aa4b2; --line:#283349;
+    --accent:#FB923C; --accent-soft:#3A2414; --fill:#F97316; --on-fill:#141B2D; --ok:#5fd394; --ok-bg:#12301f; --del:#ff8a80; --del-bg:#3a1714;
+    --warn:#ffcc66; --warn-bg:#3a2c0b; --shadow:none; }
+}
+*{box-sizing:border-box}
+html,body{margin:0;background:var(--bg);color:var(--ink);font:15px/1.55 "Segoe UI",system-ui,-apple-system,Roboto,Arial,sans-serif}
+button,input{font:inherit;color:inherit}
+header{background:var(--panel);border-bottom:1px solid var(--line)}
+.bar{max-width:880px;margin:0 auto;padding:14px 16px;display:flex;align-items:center;gap:12px}
+.logo{width:36px;height:36px;border-radius:10px;background:#141B2D;display:grid;place-items:center;flex:none}
+.logo svg{width:21px;height:21px}
+.bar h1{font-size:17px;margin:0;flex:1}
+.bar h1 small{display:block;font-weight:400;font-size:12.5px;color:var(--muted)}
+main{max-width:880px;margin:0 auto;padding:22px 16px 60px}
+.card{background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:18px 20px;box-shadow:var(--shadow);margin-bottom:16px}
+.card h2{font-size:16px;margin:0 0 4px;display:flex;gap:10px;align-items:center}
+.card h2 .n{width:24px;height:24px;border-radius:50%;background:var(--fill);color:var(--on-fill);font-size:13px;display:grid;place-items:center;flex:none}
+@media (prefers-color-scheme: dark){.card h2 .n{color:#0f1216}}
+.hint{color:var(--muted);font-size:13.5px;margin:0 0 12px}
+.btn{border:1px solid var(--line);background:var(--panel);color:var(--ink);padding:8px 14px;border-radius:8px;cursor:pointer;white-space:nowrap;text-decoration:none;display:inline-block}
+.btn:hover{border-color:var(--accent)}
+.btn.primary{background:var(--fill);border-color:var(--fill);color:var(--on-fill);font-weight:600}
+@media (prefers-color-scheme: dark){.btn.primary{color:#0f1216}}
+.btn:disabled{opacity:.55;cursor:default}
+.seg{display:inline-flex;border:1px solid var(--line);border-radius:9px;overflow:hidden;margin:6px 0 14px}
+.seg button{border:0;background:var(--panel);padding:8px 14px;cursor:pointer;color:var(--muted)}
+.seg button.on{background:var(--accent-soft);color:var(--accent);font-weight:600}
+.row{display:flex;gap:8px;flex-wrap:wrap}
+input[type=text]{flex:1;min-width:220px;border:1px solid var(--line);background:var(--panel);border-radius:8px;padding:9px 11px}
+input[type=text]:focus{outline:2px solid var(--accent-soft);border-color:var(--accent)}
+.commits{margin-top:12px;border:1px solid var(--line);border-radius:10px;max-height:360px;overflow:auto}
+.commit{display:flex;gap:10px;align-items:flex-start;padding:8px 12px;border-bottom:1px solid var(--line);cursor:pointer}
+.commit:last-child{border-bottom:0}
+.commit:hover{background:var(--panel2)}
+.commit.inc{background:var(--accent-soft)}
+.commit input{margin-top:4px}
+.commit .msg{flex:1;min-width:0;overflow-wrap:anywhere}
+.commit .meta{font-size:12px;color:var(--muted)}
+.mono{font-family:Consolas,"Cascadia Mono",Menlo,monospace;font-size:12.5px}
+.info{font-size:13.5px;margin-top:10px;color:var(--muted)}
+.check{display:flex;gap:8px;align-items:flex-start;margin-top:12px;font-size:14px}
+.drop{border:2px dashed var(--line);border-radius:12px;padding:24px;text-align:center;color:var(--muted);cursor:pointer}
+.drop.over{border-color:var(--accent);background:var(--accent-soft)}
+.drop b{color:var(--ink)}
+.status{padding:10px 14px;border-radius:9px;font-size:14px;margin-top:10px}
+.status.ok{background:var(--ok-bg);color:var(--ok)}
+.status.warn{background:var(--warn-bg);color:var(--warn)}
+.status.err{background:var(--del-bg);color:var(--del)}
+.actions{display:flex;gap:10px;flex-wrap:wrap;align-items:center}
+.result .stats{display:grid;grid-template-columns:repeat(auto-fill,minmax(160px,1fr));gap:10px;margin:12px 0 16px}
+.result .stats div{background:var(--panel2);border-radius:10px;padding:10px 12px}
+.result .stats b{display:block;font-size:19px}
+.result .stats span{font-size:12.5px;color:var(--muted)}
+.spin{width:16px;height:16px;border:2px solid currentColor;border-right-color:transparent;border-radius:50%;display:inline-block;animation:r .7s linear infinite;vertical-align:-3px;margin-right:6px}
+@keyframes r{to{transform:rotate(360deg)}}
+[hidden]{display:none!important}
+</style>
+</head>
+<body>
+<header>
+  <div class="bar">
+    <div class="logo"><svg viewBox="0 0 24 24" fill="none" stroke="#F97316" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8z"/><path d="M9 13h6M13 10l3 3-3 3"/></svg></div>
+    <h1>OSM Development<small>Gera a página de repasse a partir do Git ou de um diff</small></h1>
+    <a class="btn" href="/visualizador" target="_blank">Abrir visualizador</a>
+  </div>
+</header>
+<main>
+  <div class="card">
+    <h2><span class="n">1</span>De onde vem o desenvolvimento</h2>
+    <div class="seg" id="seg"><button data-m="repo" class="on">Do repositório Git</button><button data-m="arquivo">Enviar arquivo de diff</button></div>
+
+    <div id="m-repo">
+      <p class="hint">Cole o caminho da pasta do repositório (a mesma onde você roda os comandos git) e carregue os commits.</p>
+      <div class="row">
+        <input type="text" id="repo" placeholder="C:\My Work\BRANCH\TI\...\OSM_COM">
+        <button class="btn" id="btnCommits">Carregar commits</button>
+      </div>
+      <div id="repoInfo"></div>
+      <div id="commitsBox" hidden>
+        <p class="hint" style="margin:12px 0 0">Marque o <b>primeiro commit da demanda</b>. Ele e todos os mais recentes, acima dele, entram no diff.</p>
+        <div class="commits" id="commits"></div>
+        <label class="check" id="pendBox" hidden><input type="checkbox" id="pend" checked><span>Incluir alterações ainda não commitadas<br><span class="info" style="margin:0">Há arquivos alterados na pasta. Arquivos novos que ainda não foram adicionados ao Git (git add) não entram.</span></span></label>
+      </div>
+    </div>
+
+    <div id="m-arquivo" hidden>
+      <p class="hint">Envie um diff do Git, bruto ou já compactado.</p>
+      <div class="drop" id="drop"><b>Arraste o arquivo de diff aqui</b><br>ou clique para escolher</div>
+      <input type="file" id="fDiff" accept=".txt,.diff,.patch" hidden>
+      <div id="diffInfo"></div>
+    </div>
+  </div>
+
+  <div class="card">
+    <h2><span class="n">2</span>Nome da demanda</h2>
+    <p class="hint">Aparece no topo da página. Se já existir uma explicação com este nome, ela é usada automaticamente.</p>
+    <input type="text" id="nome" list="nomes" placeholder="Ex.: Upgrade Fibra X" style="width:100%">
+    <datalist id="nomes"></datalist>
+  </div>
+
+  <div class="card">
+    <h2><span class="n">3</span>Explicação <span class="info" style="margin:0;font-weight:400">opcional</span></h2>
+    <p class="hint">Texto que explica a demanda, em Markdown (.md) ou HTML. Fica salvo na pasta <span class="mono">explicacoes</span> para as próximas vezes. <a href="/modelo">Baixar o modelo</a></p>
+    <div id="iaBox" hidden>
+      <label class="check" style="margin-top:0"><input type="checkbox" id="usarIA"><span id="iaLabel">Gerar a explicação com IA</span></label>
+      <p class="info" id="iaInfo" style="margin:4px 0 0 24px"></p>
+    </div>
+    <p class="info" id="iaOff" hidden style="margin-top:0"></p>
+    <div id="explStatus"></div>
+    <div class="actions" style="margin-top:10px">
+      <button class="btn" id="btnExpl">Escolher arquivo de explicação</button>
+      <button class="btn" id="btnExplLimpar" hidden>Remover</button>
+      <span class="info" id="explNome" style="margin:0"></span>
+    </div>
+    <input type="file" id="fExpl" accept=".md,.html,.htm,.txt" hidden>
+  </div>
+
+  <div class="actions" style="margin-bottom:16px">
+    <button class="btn primary" id="btnGerar">Gerar página</button>
+    <span class="info" id="gerStatus" style="margin:0"></span>
+  </div>
+
+  <div id="erro"></div>
+  <div class="card result" id="result" hidden></div>
+</main>
+<footer style="max-width:880px;margin:0 auto;padding:16px;border-top:1px solid var(--line);color:var(--muted);font-size:12.5px;text-align:center">OSM Development · Projeto OSM · Uso interno</footer>
+
+<script>
+const $ = s => document.querySelector(s);
+const esc = s => String(s).replace(/[&<>"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+const mb = n => n < 1e5 ? Math.max(1, Math.round(n/1e3)).toLocaleString('pt-BR') + ' KB' : (n/1e6).toLocaleString('pt-BR',{maximumFractionDigits:1}) + ' MB';
+let modo = 'repo', commits = [], base = '', diffTexto = '', diffNome = '', expl = null, nomesExpl = [], iaOk = false, iaTocado = false;
+const store = { get(k){ try { return localStorage.getItem(k) || ''; } catch(e){ return ''; } },
+                set(k,v){ try { localStorage.setItem(k,v); } catch(e){} } };
+
+async function api(url, body){
+  const r = await fetch(url, body ? {method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify(body)} : {});
+  const j = await r.json().catch(() => ({erro:'Resposta inválida do servidor.'}));
+  if (!r.ok) throw new Error(j.erro || 'Erro');
+  return j;
+}
+function erro(msg){ $('#erro').innerHTML = msg ? `<div class="status err">${esc(msg)}</div>` : ''; }
+
+/* modo */
+$('#seg').onclick = e => { const b = e.target.closest('button'); if (!b) return;
+  modo = b.dataset.m; document.querySelectorAll('#seg button').forEach(x => x.classList.toggle('on', x === b));
+  $('#m-repo').hidden = modo !== 'repo'; $('#m-arquivo').hidden = modo !== 'arquivo'; erro(''); };
+
+/* repositório */
+$('#repo').value = store.get('repasse-repo');
+$('#repo').onkeydown = e => { if (e.key === 'Enter') carregarCommits(); };
+$('#btnCommits').onclick = carregarCommits;
+async function carregarCommits(){
+  const repo = $('#repo').value.trim(); if (!repo) return;
+  erro(''); $('#btnCommits').disabled = true; $('#repoInfo').innerHTML = '<p class="info"><span class="spin"></span>Lendo o histórico…</p>';
+  try {
+    const j = await api('/api/commits?repo=' + encodeURIComponent(repo));
+    store.set('repasse-repo', repo);
+    commits = j.commits; base = '';
+    $('#repoInfo').innerHTML = `<p class="info">Branch atual: <b class="mono">${esc(j.branch)}</b> · ${commits.length} commits mais recentes</p>`;
+    $('#pendBox').hidden = !j.pendentes;
+    renderCommits(); $('#commitsBox').hidden = false;
+  } catch(e){ $('#repoInfo').innerHTML = ''; $('#commitsBox').hidden = true; erro(e.message); }
+  $('#btnCommits').disabled = false;
+}
+function renderCommits(){
+  const idx = commits.findIndex(c => c.hash === base);
+  $('#commits').innerHTML = commits.map((c,i) => `
+    <label class="commit${idx >= 0 && i <= idx ? ' inc' : ''}">
+      <input type="radio" name="base" value="${esc(c.hash)}"${c.hash === base ? ' checked' : ''}>
+      <div class="msg">${esc(c.msg)}<div class="meta"><span class="mono">${esc(c.hash)}</span> · ${esc(c.data)} · ${esc(c.autor)}</div></div>
+    </label>`).join('');
+}
+$('#commits').onchange = e => { if (e.target.name === 'base'){ base = e.target.value; renderCommits(); } };
+
+/* arquivo de diff */
+const drop = $('#drop');
+drop.onclick = () => $('#fDiff').click();
+['dragover','dragenter'].forEach(ev => drop.addEventListener(ev, e => { e.preventDefault(); drop.classList.add('over'); }));
+['dragleave','drop'].forEach(ev => drop.addEventListener(ev, e => { e.preventDefault(); drop.classList.remove('over'); }));
+drop.addEventListener('drop', e => { if (e.dataTransfer.files[0]) lerDiff(e.dataTransfer.files[0]); });
+$('#fDiff').onchange = e => { if (e.target.files[0]) lerDiff(e.target.files[0]); e.target.value = ''; };
+function lerDiff(f){
+  const r = new FileReader();
+  r.onload = () => {
+    diffTexto = r.result; diffNome = f.name;
+    const m = diffTexto.match(/^\s*Demanda:\s*(.+)$/m);
+    if (m && !$('#nome').value.trim()) { $('#nome').value = m[1].trim(); atualizarExpl(); }
+    const ok = /^diff --git /m.test(diffTexto);
+    $('#diffInfo').innerHTML = `<div class="status ${ok ? 'ok' : 'err'}">${ok ? '✓' : '✗'} ${esc(f.name)} · ${mb(f.size)}${ok ? '' : ' · não parece um diff do Git'}</div>`;
+  };
+  r.readAsText(f, 'utf-8');
+}
+
+/* explicação */
+async function carregarNomes(){
+  try { nomesExpl = (await api('/api/explicacoes')).nomes; } catch(e){ nomesExpl = []; }
+  $('#nomes').innerHTML = nomesExpl.map(n => `<option value="${esc(n)}">`).join('');
+  atualizarExpl();
+}
+async function carregarStatusIA(){
+  let st = {configurada:false, motivo:''};
+  try { st = (await api('/api/status')).ia; } catch(e){}
+  iaOk = !!st.configurada;
+  $('#iaBox').hidden = !iaOk; $('#iaOff').hidden = iaOk;
+  if (iaOk) $('#iaInfo').innerHTML = `O diff compactado é enviado para <b class="mono">${esc(st.host)}</b> (${esc(st.modelo)}). Leva de alguns segundos a poucos minutos. A explicação fica salva para você revisar.`;
+  else $('#iaOff').innerHTML = `Geração por IA não configurada: ${esc(st.motivo || 'veja o config.json')}. Sem ela, a página usa a explicação automática.`;
+  atualizarExpl();
+}
+$('#usarIA').onchange = () => { iaTocado = true; atualizarExpl(); };
+function atualizarExpl(){
+  const nome = $('#nome').value.trim().toLowerCase();
+  const existe = nomesExpl.find(n => n.toLowerCase() === nome);
+  if (iaOk && !iaTocado) $('#usarIA').checked = !existe && !expl;
+  $('#iaLabel').textContent = existe ? 'Gerar uma nova explicação com IA (substitui a salva)' : 'Gerar a explicação com IA';
+  $('#usarIA').disabled = !!expl;
+  const comIA = iaOk && $('#usarIA').checked && !expl;
+  let h = '';
+  if (expl) h = `<div class="status ok">Vai usar o arquivo <b>${esc(expl.nome)}</b>${existe ? ' e substituir a explicação salva' : ''}.</div>`;
+  else if (comIA) h = `<div class="status ok">A explicação será gerada pela IA ao clicar em Gerar página.</div>`;
+  else if (existe) h = `<div class="status ok">Vai usar a explicação salva <b>${esc(existe)}</b>.</div>`;
+  else if (nome) h = `<div class="status warn">Não há explicação salva com este nome. A página terá uma explicação automática, montada a partir do diff, com um prompt pronto para gerar a completa no Copilot.</div>`;
+  $('#explStatus').innerHTML = h;
+}
+$('#nome').oninput = atualizarExpl;
+$('#btnExpl').onclick = () => $('#fExpl').click();
+$('#fExpl').onchange = e => {
+  const f = e.target.files[0]; if (!f) return;
+  const r = new FileReader();
+  r.onload = () => { expl = {nome:f.name, texto:r.result, tipo:/\.html?$/i.test(f.name) ? 'html' : 'md'};
+    $('#explNome').textContent = f.name; $('#btnExplLimpar').hidden = false; atualizarExpl(); };
+  r.readAsText(f, 'utf-8'); e.target.value = '';
+};
+$('#btnExplLimpar').onclick = () => { expl = null; $('#explNome').textContent = ''; $('#btnExplLimpar').hidden = true; atualizarExpl(); };
+
+/* gerar */
+$('#btnGerar').onclick = async () => {
+  erro(''); $('#result').hidden = true;
+  const nome = $('#nome').value.trim();
+  const body = {modo, nome};
+  if (modo === 'repo'){
+    body.repo = $('#repo').value.trim();
+    if (!body.repo) return erro('Informe a pasta do repositório.');
+    if (!base) return erro('Carregue os commits e marque o primeiro commit da demanda.');
+    body.base = base; body.incluir_pendentes = $('#pendBox').hidden ? true : $('#pend').checked;
+  } else {
+    if (!diffTexto) return erro('Envie o arquivo de diff.');
+    body.diff_texto = diffTexto;
+  }
+  if (!nome && modo === 'repo') return erro('Informe o nome da demanda.');
+  if (expl){ body.explicacao_texto = expl.texto; body.explicacao_tipo = expl.tipo; }
+  body.gerar_ia = iaOk && $('#usarIA').checked && !expl;
+  $('#btnGerar').disabled = true;
+  $('#gerStatus').innerHTML = '<span class="spin"></span>' + (body.gerar_ia ? 'Gerando… a IA está escrevendo a explicação, pode levar alguns minutos.' : 'Gerando… diffs grandes levam alguns segundos.');
+  try {
+    const j = await api('/api/gerar', body);
+    if (expl){ expl = null; $('#explNome').textContent = ''; $('#btnExplLimpar').hidden = true; }
+    iaTocado = false;
+    await carregarNomes();
+    if (!$('#nome').value.trim()) $('#nome').value = j.nome;
+    $('#result').innerHTML = `
+      <h2>Página gerada: ${esc(j.nome)}</h2>
+      ${j.ia === 'gerada' ? `<div class="status ok">Explicação gerada pela IA e salva como <b>${esc(j.explicacao_salva)}</b> na pasta explicacoes. Revise os itens A CONFIRMAR antes de repassar.</div>` : ''}
+      ${j.ia === 'erro' ? `<div class="status err">A IA não gerou a explicação: ${esc(j.ia_aviso)}</div>` : ''}
+      ${j.tem_explicacao ? '' : '<div class="status warn">Sem explicação escrita: a página usa a explicação automática. Para a completa, use o prompt do Copilot no fim da aba Explicação.</div>'}
+      <div class="stats">
+        <div><b>${j.arquivos}</b><span>arquivos no diff</span></div>
+        <div><b>${mb(j.tamanho_bruto)} → ${mb(j.tamanho_compacto)}</b><span>diff bruto → compactado</span></div>
+        <div><b>${j.ia === 'gerada' ? 'Por IA' : j.tem_explicacao ? 'Escrita' : 'Automática'}</b><span>explicação</span></div>
+      </div>
+      <div class="actions">
+        <a class="btn primary" href="${j.pagina}" target="_blank">Abrir página</a>
+        <a class="btn" href="${j.pagina}?baixar=1">Baixar página</a>
+        <a class="btn" href="${j.diff}?baixar=1">Baixar diff compactado</a>
+      </div>
+      <p class="info">Os dois arquivos também ficaram salvos em <span class="mono">${esc(j.pasta)}</span>. O diff compactado é o que vai para a pasta da demanda no SharePoint.</p>`;
+    $('#result').hidden = false; $('#result').scrollIntoView({behavior:'smooth', block:'start'});
+  } catch(e){ erro(e.message); }
+  $('#btnGerar').disabled = false; $('#gerStatus').textContent = '';
+};
+
+carregarNomes().then(carregarStatusIA);
+if ($('#repo').value) carregarCommits();
+</script>
+</body>
+</html>

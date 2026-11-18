@@ -1,0 +1,632 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>OSM Development</title>
+<style>
+:root{
+  --bg:#f6f7f9; --panel:#ffffff; --panel2:#f0f2f5; --ink:#1b1f24; --muted:#5b6470; --line:#dde1e6;
+  --accent:#C2410C; --accent-soft:#FFEDD5; --fill:#F97316; --on-fill:#141B2D; --ok:#1f7a4d; --ok-bg:#e3f4ea; --del:#b42318; --del-bg:#fde8e6;
+  --warn:#8a5a00; --warn-bg:#fff4d6; --hunk:#5b6470; --hunk-bg:#eef1f6; --code:#24292f;
+  --shadow:0 1px 2px rgba(16,24,40,.06),0 1px 3px rgba(16,24,40,.08);
+}
+@media (prefers-color-scheme: dark){
+  :root{
+    --bg:#0d1220; --panel:#141B2D; --panel2:#1b2438; --ink:#e6e9ee; --muted:#9aa4b2; --line:#283349;
+    --accent:#FB923C; --accent-soft:#3A2414; --fill:#F97316; --on-fill:#141B2D; --ok:#5fd394; --ok-bg:#12301f; --del:#ff8a80; --del-bg:#3a1714;
+    --warn:#ffcc66; --warn-bg:#3a2c0b; --hunk:#9aa4b2; --hunk-bg:#1b2438; --code:#d6dbe2;
+    --shadow:none;
+  }
+}
+*{box-sizing:border-box}
+html,body{margin:0;background:var(--bg);color:var(--ink);font:15px/1.55 "Segoe UI",system-ui,-apple-system,Roboto,Arial,sans-serif}
+button,input,select{font:inherit;color:inherit}
+a{color:var(--accent)}
+header{position:sticky;top:0;z-index:5;background:var(--panel);border-bottom:1px solid var(--line)}
+.bar{max-width:1280px;margin:0 auto;padding:12px 16px;display:flex;gap:12px;align-items:center;flex-wrap:wrap}
+.brand{display:flex;align-items:center;gap:10px;min-width:0;flex:1}
+.logo{width:34px;height:34px;border-radius:9px;background:#141B2D;display:grid;place-items:center;flex:none}
+.logo svg{width:20px;height:20px}
+.brand h1{font-size:16px;margin:0;font-weight:650;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.brand small{display:block;color:var(--muted);font-size:12.5px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.btn{border:1px solid var(--line);background:var(--panel);padding:7px 12px;border-radius:8px;cursor:pointer;white-space:nowrap}
+.btn:hover{border-color:var(--accent)}
+@media (max-width:520px){#btnDemo{display:none}}
+.btn.primary{background:var(--fill);border-color:var(--fill);color:var(--on-fill)}
+@media (prefers-color-scheme: dark){.btn.primary{color:#0f1216}}
+nav.tabs{max-width:1280px;margin:0 auto;padding:0 16px;display:flex;gap:4px;overflow-x:auto}
+nav.tabs button{background:none;border:0;border-bottom:2px solid transparent;padding:9px 12px;cursor:pointer;color:var(--muted);white-space:nowrap}
+nav.tabs button.on{color:var(--ink);border-bottom-color:var(--fill);font-weight:600}
+main{max-width:1280px;margin:0 auto;padding:20px 16px 60px}
+.view{display:none}.view.on{display:block}
+.card{background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:18px 20px;box-shadow:var(--shadow);margin-bottom:16px}
+.card h2{font-size:17px;margin:0 0 10px}
+.card h3{font-size:15px;margin:18px 0 6px}
+.muted{color:var(--muted)}
+.grid{display:grid;gap:12px;grid-template-columns:repeat(auto-fill,minmax(170px,1fr))}
+.stat{background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:14px 16px;box-shadow:var(--shadow)}
+.stat b{display:block;font-size:24px;line-height:1.2}
+.stat span{color:var(--muted);font-size:13px}
+.pill{display:inline-block;font-size:12px;padding:1px 8px;border-radius:999px;background:var(--panel2);color:var(--muted);border:1px solid var(--line);white-space:nowrap}
+.pill.novo{background:var(--ok-bg);color:var(--ok);border-color:transparent}
+.pill.alterado{background:var(--accent-soft);color:var(--accent);border-color:transparent}
+.pill.removido{background:var(--del-bg);color:var(--del);border-color:transparent}
+.confirm{background:var(--warn-bg);color:var(--warn);font-weight:600;font-size:12px;padding:1px 7px;border-radius:6px;white-space:nowrap}
+table{border-collapse:collapse;width:100%}
+th,td{text-align:left;padding:8px 10px;border-bottom:1px solid var(--line);vertical-align:top}
+th{font-size:12.5px;color:var(--muted);font-weight:600}
+.tablewrap{overflow-x:auto}
+code,.mono{font-family:Consolas,"Cascadia Mono","SF Mono",Menlo,monospace;font-size:13px}
+code{background:var(--panel2);padding:1px 5px;border-radius:5px}
+.drop{border:2px dashed var(--line);border-radius:12px;padding:28px;text-align:center;color:var(--muted)}
+.drop.over{border-color:var(--accent);background:var(--accent-soft)}
+/* orquestração */
+.orch{display:flex;flex-direction:column;gap:0;align-items:stretch;max-width:760px}
+.step{display:flex;gap:12px;align-items:flex-start}
+.step .dot{flex:none;width:30px;height:30px;border-radius:50%;background:var(--fill);color:var(--on-fill);display:grid;place-items:center;font-weight:700;font-size:13px;margin-top:6px}
+@media (prefers-color-scheme: dark){.step .dot{color:#0f1216}}
+.step .box{flex:1;border:1px solid var(--line);border-radius:10px;padding:10px 14px;background:var(--panel)}
+.step .box b{display:block}
+.step .box .fn{font-size:12.5px;color:var(--muted)}
+.link{margin-left:14px;border-left:2px solid var(--line);height:18px}
+.branch{display:grid;grid-template-columns:1fr 1fr;gap:10px;flex:1}
+@media (max-width:640px){.branch{grid-template-columns:1fr}}
+/* componentes */
+.toolbar{display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin-bottom:12px}
+.toolbar input[type=search]{flex:1;min-width:200px;border:1px solid var(--line);background:var(--panel);border-radius:8px;padding:8px 10px}
+.toolbar select{border:1px solid var(--line);background:var(--panel);border-radius:8px;padding:8px 10px}
+.group h3{display:flex;align-items:center;gap:8px}
+.row{display:flex;gap:10px;align-items:center;padding:8px 10px;border-bottom:1px solid var(--line);cursor:pointer}
+.row:hover{background:var(--panel2)}
+.row .nm{flex:1;min-width:0}
+.row .nm b{font-weight:600;display:block;overflow-wrap:anywhere}
+.row .nm small{color:var(--muted);overflow-wrap:anywhere}
+.delta{font-size:12.5px;white-space:nowrap}
+.delta .a{color:var(--ok)}.delta .r{color:var(--del)}
+/* fluxos */
+.flow{display:flex;flex-direction:column;gap:6px}
+.tr{display:grid;grid-template-columns:minmax(0,1fr) 170px minmax(0,1fr);gap:8px;align-items:center;font-size:13.5px}
+.tr .n{border:1px solid var(--line);border-radius:8px;padding:5px 9px;background:var(--panel2);overflow-wrap:anywhere}
+.tr .s{font-size:12px;color:var(--muted);white-space:nowrap;text-align:center;overflow:hidden;text-overflow:ellipsis}
+.tr .s b{color:var(--accent);font-weight:600}
+@media (max-width:640px){.tr{grid-template-columns:1fr}.tr .s{padding-left:10px}}
+/* código */
+.codewrap{display:grid;grid-template-columns:320px minmax(0,1fr);gap:16px}
+@media (max-width:900px){.codewrap{grid-template-columns:1fr}}
+.filelist{max-height:75vh;overflow:auto;background:var(--panel);border:1px solid var(--line);border-radius:12px}
+.filelist .row.sel{background:var(--accent-soft)}
+.codepane{background:var(--panel);border:1px solid var(--line);border-radius:12px;overflow:hidden;min-height:300px}
+.codehead{padding:12px 14px;border-bottom:1px solid var(--line);display:flex;gap:10px;align-items:center;flex-wrap:wrap}
+.codehead b{overflow-wrap:anywhere}
+.code{overflow:auto;max-height:72vh;font-family:Consolas,"Cascadia Mono","SF Mono",Menlo,monospace;font-size:12.5px;line-height:1.5;color:var(--code)}
+.code div{white-space:pre;padding:0 12px;min-height:1.5em}
+.code .a{background:var(--ok-bg)}
+.code .r{background:var(--del-bg)}
+.code .h{background:var(--hunk-bg);color:var(--hunk);padding-top:2px;padding-bottom:2px}
+.code mark{background:#ffe27a;color:#000}
+.more{padding:12px;text-align:center}
+.empty{padding:40px 16px;text-align:center;color:var(--muted)}
+.expl p{margin:6px 0 10px}
+.expl ul{margin:6px 0 10px;padding-left:20px}
+.expl li{margin:3px 0}
+.callout{border-left:3px solid var(--warn);background:var(--warn-bg);padding:10px 14px;border-radius:0 8px 8px 0;margin:10px 0}
+.callout b{color:var(--warn)}
+.toc{display:flex;gap:6px;flex-wrap:wrap;margin:4px 0 0}
+.toc a{font-size:13px;text-decoration:none;border:1px solid var(--line);padding:3px 10px;border-radius:999px;color:var(--muted)}
+.toc a:hover{border-color:var(--accent);color:var(--accent)}
+.rodape{max-width:1280px;margin:0 auto;padding:18px 16px 28px;border-top:1px solid var(--line);color:var(--muted);font-size:12.5px;text-align:center}
+main{padding-bottom:24px}
+</style>
+</head>
+<body>
+<div id="semjs" style="max-width:720px;margin:40px auto;padding:18px 22px;border:1px solid #F97316;border-left-width:6px;border-radius:10px;background:#FFF3E8;color:#141B2D;font:16px/1.5 system-ui,Segoe UI,sans-serif">
+  <b>Se esta página ficou só com este aviso, ela foi aberta num visualizador que não roda a página.</b><br>
+  Isso acontece na pré-visualização do Teams, do Outlook, do SharePoint/OneDrive ou do Explorer.
+  Baixe o arquivo para o computador e abra no <b>Microsoft Edge</b> ou no <b>Google Chrome</b>
+  (botão direito no arquivo → Abrir com → Microsoft Edge).
+</div>
+<header>
+  <div class="bar">
+    <div class="brand">
+      <div class="logo"><svg viewBox="0 0 24 24" fill="none" stroke="#F97316" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8z"/><path d="M9 13h6M13 10l3 3-3 3"/></svg></div>
+      <div style="min-width:0"><h1 id="title">OSM Development</h1><small id="subtitle">Abra um diff para começar</small></div>
+    </div>
+    <input type="file" id="file" accept=".txt,.diff,.patch" hidden>
+    <button class="btn" id="btnDemo" hidden></button>
+    <button class="btn primary" id="btnOpen">Abrir diff</button>
+  </div>
+  <nav class="tabs" id="tabs">
+    <button data-v="visao" class="on">Visão geral</button>
+    <button data-v="explicacao" id="tabExpl">Explicação</button>
+    <button data-v="fluxos">Fluxos</button>
+    <button data-v="componentes">Componentes</button>
+    <button data-v="commits">Commits</button>
+    <button data-v="codigo">Código</button>
+  </nav>
+</header>
+<main>
+  <section class="view on" id="v-visao"></section>
+  <section class="view expl" id="v-explicacao"></section>
+  <section class="view" id="v-fluxos"></section>
+  <section class="view" id="v-componentes">
+    <div class="toolbar">
+      <input type="search" id="q" placeholder="Buscar por nome, nome de exibição ou caminho">
+      <select id="fKind"><option value="">Novos e alterados</option><option value="novo">Só novos</option><option value="alterado">Só alterados</option><option value="removido">Só removidos</option></select>
+      <label class="muted" style="font-size:13px;display:flex;gap:6px;align-items:center"><input type="checkbox" id="fCode"> buscar também no código</label>
+    </div>
+    <div id="groups"></div>
+  </section>
+  <section class="view" id="v-commits"></section>
+  <section class="view" id="v-codigo">
+    <div class="codewrap">
+      <div class="filelist" id="filelist"></div>
+      <div class="codepane" id="codepane"><div class="empty">Escolha um arquivo na lista.</div></div>
+    </div>
+  </section>
+</main>
+<footer class="rodape">Projeto OSM · Uso interno · Página gerada em __DATA_GERACAO__</footer>
+
+<script type="text/plain" id="demoData">__DIFF_B64__</script>
+<script>
+/* ===== Explicações embutidas (chave: nome da demanda no topo do diff, em minúsculas) ===== */
+const EXPLICACOES = __EXPLICACOES_JSON__;
+
+/* ===== Tipos de componente ===== */
+const TYPES = [
+  [/\.orchestrationSequence$/i,'Sequência de orquestração'],
+  [/\.fulfillmentMode$/i,'Fulfillment mode'],
+  [/\.productSpec$/i,'Product spec'],
+  [/\.orderComponentSpec$/i,'Function'],
+  [/\.process$/i,'Processo'],
+  [/\.automationTask$/i,'Tarefa automática'],
+  [/\.manualTask$/i,'Tarefa manual'],
+  [/\.(xqy|xquery)$/i,'XQuery'],
+  [/\.java$/i,'Java'],
+  [/\.customAutomationPlugin$/i,'Plugin de automação'],
+  [/\.(xsd|xsdc)$/i,'Dicionário de dados'],
+  [/\.order$/i,'Order'],
+  [/\.jar$/i,'Biblioteca / build'],
+];
+const typeOf = f => (TYPES.find(([re]) => re.test(f)) || [0,'Outros'])[1];
+const TYPE_ORDER = [...TYPES.map(t=>t[1]),'Outros'];
+
+/* ===== Estado ===== */
+let D = null;          // demanda carregada
+let selected = null;   // arquivo aberto no código
+const $ = s => document.querySelector(s);
+const esc = s => String(s).replace(/[&<>"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+const unxml = s => s.replace(/&quot;/g,'"').replace(/&lt;/g,'<').replace(/&gt;/g,'>').replace(/&amp;/g,'&');
+const base = f => f.split('/').pop();
+const stem = f => base(f).replace(/\.[^.]+$/,'');
+
+/* ===== Parser do diff ===== */
+function parse(text){
+  text = text.replace(/\r\n/g,'\n');
+  const lines = text.split('\n');
+  const d = {name:'', commits:[], files:[], raw:text};
+  let i = 0, section = '';
+  // cabeçalho
+  for (; i < lines.length && !lines[i].startsWith('diff --git '); i++){
+    const l = lines[i];
+    let m = l.match(/^Demanda:\s*(.+)$/); if (m) d.name = m[1].trim();
+    m = l.match(/^([0-9a-f]{7,40})\s+(.+)$/); if (m) d.commits.push({hash:m[1], msg:m[2]});
+    m = l.match(/^==\s*(Diff.*?)\s*==$/); if (m) section = m[1];
+  }
+  let cur = null;
+  const push = () => { if (cur) d.files.push(cur); };
+  for (; i < lines.length; i++){
+    const l = lines[i];
+    if (l.startsWith('diff --git ')){
+      push();
+      const m = l.match(/^diff --git a\/(.*?) b\/(.*)$/);
+      const f = (m ? m[2] : l.slice(11)).trim();
+      cur = {path:f, name:base(f), type:typeOf(f), kind:'alterado', lines:[], add:0, del:0, section};
+      continue;
+    }
+    const sm = l.match(/^==\s*(Diff.*?)\s*==$/);
+    if (sm){ section = sm[1]; continue; }
+    if (!cur) continue;
+    if (l.startsWith('new file mode')) cur.kind = 'novo';
+    else if (l.startsWith('deleted file mode')) cur.kind = 'removido';
+    if (/^(index |--- |\+\+\+ |new file mode|deleted file mode|similarity|rename )/.test(l)) continue;
+    if (l.startsWith('Binary files')){ cur.binary = true; continue; }
+    cur.lines.push(l);
+    if (l[0]==='+') cur.add++; else if (l[0]==='-') cur.del++;
+  }
+  push();
+  // índice gerado pelo compactador não é arquivo
+  d.files = d.files.filter(f => f.path);
+  // nomes de exibição
+  for (const f of d.files){
+    for (const l of f.lines){
+      const m = l.match(/<com:displayName[^>]*>([^<]+)<\/com:displayName>/);
+      if (m && l[0] !== '-'){ f.display = unxml(m[1].trim()); break; }
+    }
+    if (f.display && f.display === stem(f.path)) f.display = '';
+  }
+  d.byStem = {};
+  for (const f of d.files) d.byStem[stem(f.path)] = f;
+  if (!d.name){ d.name = 'Demanda sem nome'; }
+  return d;
+}
+
+/* ===== Fluxos de processo ===== */
+function processFlow(f){
+  const txt = f.lines.filter(l => l[0] !== '-' && !l.startsWith('@@')).map(l => l.slice(1)).join('\n');
+  const acts = {};
+  for (const m of txt.matchAll(/<proc:activity\b([^>]*)>([\s\S]*?)<\/proc:activity>/g)){
+    const id = (m[1].match(/id="([^"]+)"/)||[])[1]; if (!id) continue;
+    const ents = [...m[2].matchAll(/<com:entity>([^<]+)<\/com:entity>/g)].map(x=>x[1]).filter(x=>x!=='Order');
+    const el = (m[2].match(/<com:element>([^<]+)<\/com:element>/)||[])[1];
+    const desc = (m[2].match(/<proc:description>([^<]+)<\/proc:description>/)||[])[1];
+    let label = ents[0] || el || (m[1].match(/name="([^"]*)"/)||[])[1] || id;
+    let kind = 'task';
+    if (/^Start/i.test(id)) { kind='start'; label='Início'; }
+    else if (/Gateway/i.test(id)) { kind='gw'; label = desc ? unxml(desc) : 'Decisão'; if (el) label += ' (regra '+el+')'; }
+    else if (/SubProcess/i.test(id)) kind='sub';
+    else if (/^End/i.test(id) || /endType/.test(m[1])) { kind='end'; label='Fim'; }
+    acts[id] = {label, kind};
+  }
+  const trs = [];
+  for (const m of txt.matchAll(/<proc:transition\b[^>]*>([\s\S]*?)<\/proc:transition>/g)){
+    const b = m[1];
+    const fr = (b.match(/<proc:from>([^<]+)/)||[])[1], to = (b.match(/<proc:to>([^<]+)/)||[])[1];
+    if (!fr || !to) continue;
+    const st = (b.match(/<proc:status>([^<]*)/)||[])[1] || (m[0].match(/name="([^"]+)"/)||[])[1] || '';
+    trs.push({fr, to, st});
+  }
+  const lab = id => {
+    if (acts[id]) return acts[id];
+    if (/^Start/i.test(id)) return {label:'Início', kind:'start'};
+    if (/^End/i.test(id)) return {label:'Fim', kind:'end'};
+    return {label:id, kind:'task'};
+  };
+  // ordena a partir do início (busca em largura)
+  const order = [], seen = new Set(), q = trs.filter(t => /^Start/i.test(t.fr));
+  while (q.length){
+    const t = q.shift(); const k = t.fr+'>'+t.to+'>'+t.st;
+    if (seen.has(k)) continue; seen.add(k); order.push(t);
+    trs.filter(x => x.fr === t.to).forEach(x => q.push(x));
+  }
+  trs.forEach(t => { const k=t.fr+'>'+t.to+'>'+t.st; if (!seen.has(k)) { seen.add(k); order.push(t); } });
+  return order.map(t => ({from:lab(t.fr), to:lab(t.to), st:t.st}));
+}
+function nodeHtml(n){
+  const f = D.byStem[n.label];
+  const sub = f && f.display ? `<br><small class="muted">${esc(f.display)}</small>` : '';
+  const pre = n.kind==='sub' ? '↳ ' : n.kind==='gw' ? '◇ ' : '';
+  return `<div class="n">${pre}${esc(n.label)}${sub}</div>`;
+}
+
+/* ===== Explicação automática (a partir da estrutura do diff) ===== */
+const uniq = a => [...new Set(a)];
+function plusMinus(f){
+  if (f._pm) return f._pm;
+  const p = [], m = [];
+  for (const l of f.lines){ if (l.startsWith('@@')) continue; if (l[0]==='+') p.push(l.slice(1)); else if (l[0]==='-') m.push(l.slice(1)); }
+  return f._pm = {p, m, pt: p.join('\n'), mt: m.join('\n')};
+}
+function diffSets(f, re){
+  const {pt, mt} = plusMinus(f);
+  const a = new Set([...pt.matchAll(re)].map(x => unxml(x[1].trim())));
+  const r = new Set([...mt.matchAll(re)].map(x => unxml(x[1].trim())));
+  return {add:[...a].filter(x => !r.has(x)), del:[...r].filter(x => !a.has(x))};
+}
+function nomeArq(f){ return `<a href="#" data-file="${esc(f.path)}">${esc(f.display || stem(f.path))}</a>`; }
+function lista(itens, max=12){
+  if (!itens.length) return '';
+  const mais = itens.length > max ? `<li class="muted">e mais ${itens.length-max}</li>` : '';
+  return '<ul>' + itens.slice(0,max).map(x => `<li>${x}</li>`).join('') + mais + '</ul>';
+}
+function codes(xs){ return xs.map(x => `<code>${esc(x)}</code>`).join(', '); }
+
+function autoExplicacao(){
+  const novos = D.files.filter(f => f.kind==='novo'), alt = D.files.filter(f => f.kind==='alterado');
+  const porTipo = t => novos.filter(f => f.type===t);
+  const procs = porTipo('Processo'), fns = porTipo('Function');
+  const tasks = [...porTipo('Tarefa automática'), ...porTipo('Tarefa manual')];
+  const xqs = porTipo('XQuery'), javas = porTipo('Java');
+  const msgs = uniq(D.commits.map(c => c.msg).filter(m => !/^Merged PR/i.test(m)));
+
+  // resumo
+  const partes = [];
+  if (procs.length) partes.push(`${procs.length} processo${procs.length>1?'s':''} (${procs.slice(0,4).map(p => esc(p.display || stem(p.path))).join('; ')}${procs.length>4?'…':''})`);
+  if (fns.length) partes.push(`${fns.length} function${fns.length>1?'s':''}`);
+  if (tasks.length) partes.push(`${tasks.length} tarefa${tasks.length>1?'s':''}`);
+  if (xqs.length) partes.push(`${xqs.length} XQuery${xqs.length>1?'s':''}`);
+  if (javas.length) partes.push(`${javas.length} classe${javas.length>1?'s':''} Java`);
+  let resumo = `<p>Esta demanda tem ${D.commits.length || 'nenhum'} commit${D.commits.length===1?'':'s'} e altera ${D.files.length} arquivo${D.files.length===1?'':'s'}: ${novos.length} novo${novos.length===1?'':'s'} e ${alt.length} alterado${alt.length===1?'':'s'}.`;
+  if (partes.length) resumo += ` Entre os novos estão ${partes.join(', ').replace(/, ([^,]*)$/, ' e $1')}.`;
+  resumo += '</p>';
+  if (msgs.length) resumo += `<p>Os commits descrevem: ${msgs.slice(0,6).map(m => '<i>' + esc(m) + '</i>').join('; ')}${msgs.length>6?'…':''}.</p>`;
+
+  const sec = [];
+  // componentes novos
+  const tiposNovos = TYPE_ORDER.filter(t => novos.some(f => f.type===t) && t !== 'Biblioteca / build' && t !== 'Outros');
+  if (tiposNovos.length) sec.push(['Componentes criados', tiposNovos.map(t => {
+    const fs = porTipo(t);
+    return `<h3>${esc(t)} <span class="pill">${fs.length}</span></h3>` + lista(fs.map(f => nomeArq(f) + (f.display ? ` <small class="muted">${esc(stem(f.path))}</small>` : '')));
+  }).join('')]);
+
+  // orquestração, product specs, order item specs, functions alteradas
+  const estrut = alt.filter(f => ['Sequência de orquestração','Product spec','Fulfillment mode','Function','Order'].includes(f.type) || /\.orderItemSpec$/i.test(f.path));
+  const itensEst = [];
+  for (const f of estrut){
+    const ent = diffSets(f, /<com:entity>([^<]+)<\/com:entity>/g);
+    const generico = x => x === stem(f.path) || /^(stateType|Order|order)$/.test(x) || /^OI_OSM/.test(x);
+    ent.add = ent.add.filter(x => !generico(x)); ent.del = ent.del.filter(x => !generico(x));
+    const dep = diffSets(f, /<orderItemDependency\b[^>]*name="([^"]+)"/g);
+    const bits = [];
+    if (ent.add.length) bits.push(`passa a referenciar ${codes(ent.add.slice(0,10))}${ent.add.length>10?'…':''}`);
+    if (ent.del.length) bits.push(`deixa de referenciar ${codes(ent.del.slice(0,10))}${ent.del.length>10?'…':''}`);
+    if (dep.add.length) bits.push(`nova dependência ${codes(dep.add)}`);
+    if (dep.del.length) bits.push(`dependência removida ${codes(dep.del)}`);
+    if (bits.length) itensEst.push(`${nomeArq(f)} <small class="muted">${esc(f.type === 'Outros' ? 'order item spec' : f.type)}</small>: ${bits.join('; ')}.`);
+  }
+  if (itensEst.length) sec.push(['Orquestração e especificações alteradas', lista(itensEst, 20)]);
+
+  // status de tasks alteradas
+  const itensSt = [];
+  for (const f of alt.filter(f => /Tarefa/.test(f.type))){
+    const st = diffSets(f, /<task:status name="([^"]+)"/g);
+    const bits = [];
+    if (st.add.length) bits.push(`novos status ${codes(st.add)}`);
+    if (st.del.length) bits.push(`status removidos ${codes(st.del)}`);
+    const plug = diffSets(f, /<prov:name>([^<]+)<\/prov:name>/g);
+    if (plug.add.length) bits.push(`nova automação ${codes(plug.add)}`);
+    if (plug.del.length) bits.push(`automação removida ${codes(plug.del)}`);
+    const campos = diffSets(f, /campo: (\S+)/g);
+    if (campos.add.length && campos.add.length <= 6) bits.push(`novos campos ${codes(campos.add.map(c => c.split('/').pop()))}`);
+    else if (campos.add.length) bits.push(`${campos.add.length} novos campos nos dados da task`);
+    if (bits.length) itensSt.push(`${nomeArq(f)}: ${bits.join('; ')}.`);
+  }
+  if (itensSt.length) sec.push(['Tarefas existentes alteradas', lista(itensSt, 20)]);
+
+  // dicionário de dados
+  const dic = D.files.filter(f => f.type==='Dicionário de dados');
+  const itensDic = [];
+  for (const f of dic){
+    const el = diffSets(f, /<xs:element\b[^>]*name="([^"]+)"/g);
+    const bits = [];
+    if (el.add.length) bits.push(`campos novos ${codes(el.add.slice(0,15))}${el.add.length>15?'…':''}`);
+    if (el.del.length) bits.push(`campos removidos ${codes(el.del)}`);
+    if (bits.length) itensDic.push(`${nomeArq(f)}: ${bits.join('; ')}.`);
+  }
+  if (itensDic.length) sec.push(['Dicionário de dados', lista(itensDic)]);
+
+  // integrações
+  const serv = {};
+  for (const f of D.files.filter(f => f.type==='XQuery')){
+    const {pt} = plusMinus(f);
+    for (const m of pt.matchAll(/http:\/\/www\.oi\.net\.br\/([A-Za-z0-9_\/.-]+)/g)){
+      const s = m[1].replace(/\/+$/,''); if (/SOAFW|Cabecalho|Header/i.test(s)) continue;
+      (serv[s] ||= new Set()).add(f);
+    }
+  }
+  const itensInt = Object.entries(serv).map(([s, fs]) => `<code>${esc(s)}</code> <small class="muted">em ${[...fs].slice(0,3).map(f => esc(stem(f.path))).join(', ')}${fs.size>3?'…':''}</small>`);
+  const filas = uniq(novos.filter(f => /Tarefa/.test(f.type)).flatMap(f => [...plusMinus(f).pt.matchAll(/<aut:jndiName>%\{([^}]+)\}<\/aut:jndiName>/g)].map(m => m[1]))).filter(x => !/DEFAULT_RESPONSE_QUEUE/.test(x));
+  if (itensInt.length || filas.length) sec.push(['Integrações', (itensInt.length ? '<p>Serviços referenciados nas XQuerys com alterações:</p>' + lista(itensInt, 15) : '') + (filas.length ? `<p>Filas usadas pelas tarefas novas: ${codes(filas)}.</p>` : '')]);
+
+  // XQuerys e Java alterados
+  const codAlt = alt.filter(f => f.type==='XQuery' || f.type==='Java');
+  if (codAlt.length) sec.push(['Código alterado', lista(codAlt.map(f => `${nomeArq(f)} <span class="delta"><span class="a">+${f.add}</span> <span class="r">−${f.del}</span></span>`), 20)]);
+
+  const prompt = promptCopilot();
+  return `
+  <div class="card">
+    <h2>${esc(D.name)} <span class="pill">explicação automática</span></h2>
+    <div class="toc"><a href="#auto-resumo">Resumo</a>${sec.map((s,i) => `<a href="#auto-${i}">${esc(s[0])}</a>`).join('')}<a href="#auto-copilot">Explicação completa</a></div>
+    <div class="callout" style="margin-top:12px"><b>Gerada automaticamente</b> a partir da estrutura do diff: lista o que foi criado e alterado, mas não interpreta regras de negócio. Para uma explicação completa, veja o último bloco.</div>
+  </div>
+  <div class="card" id="auto-resumo"><h2>Resumo</h2><!--resumo-->${resumo}<!--/resumo--></div>
+  ${sec.map((s,i) => `<div class="card" id="auto-${i}"><h2>${esc(s[0])}</h2>${s[1]}</div>`).join('')}
+  <div class="card" id="auto-copilot">
+    <h2>Explicação completa com o Copilot</h2>
+    <ol>
+      <li>Copie o prompt abaixo e cole no Copilot.</li>
+      <li>Anexe o arquivo <code>DEM-${esc(D.name)} - para o Copilot.txt</code>, gerado junto com a página, na mesma mensagem.</li>
+      <li>Salve a resposta como <code>${esc(D.name)}.md</code>, revise e anexe na aplicação, no passo <b>Explicação</b>.</li>
+    </ol>
+    <div class="actions" style="display:flex;gap:8px;align-items:center;margin:8px 0"><button class="btn" id="btnCopiarPrompt">Copiar prompt</button><span class="muted" id="copiado"></span></div>
+    <textarea id="promptTxt" readonly class="mono" style="width:100%;min-height:220px;border:1px solid var(--line);border-radius:8px;background:var(--panel2);color:var(--ink);padding:10px">${esc(prompt)}</textarea>
+  </div>`;
+}
+
+const PROMPT_COPILOT = __PROMPT_COPILOT__;
+function promptCopilot(){
+  return (typeof PROMPT_COPILOT === 'string' && PROMPT_COPILOT) ? PROMPT_COPILOT.split('{{NOME}}').join(D.name) : '';
+}
+
+/* ===== Render ===== */
+function render(){
+  $('#title').textContent = D.name;
+  const novos = D.files.filter(f=>f.kind==='novo').length, alt = D.files.filter(f=>f.kind==='alterado').length;
+  $('#subtitle').textContent = `${D.files.length} arquivos · ${novos} novos · ${alt} alterados · ${D.commits.length} commits`;
+  const escrita = EXPLICACOES[D.name.toLowerCase()];
+  D.auto = !escrita;
+  const expl = escrita || autoExplicacao();
+  $('#tabExpl').hidden = false;
+  renderVisao(expl); renderExpl(expl); renderFluxos(); renderGroups(); renderCommits(); renderFileList();
+  const bp = $('#btnCopiarPrompt');
+  if (bp) bp.onclick = () => {
+    const ta = $('#promptTxt');
+    const ok = () => { $('#copiado').textContent = 'Copiado.'; setTimeout(() => $('#copiado').textContent = '', 2500); };
+    if (navigator.clipboard && window.isSecureContext) navigator.clipboard.writeText(ta.value).then(ok, () => { ta.select(); document.execCommand('copy'); ok(); });
+    else { ta.select(); document.execCommand('copy'); ok(); }
+  };
+  selected = null;
+  $('#codepane').innerHTML = '<div class="empty">Escolha um arquivo na lista.</div>';
+}
+
+function renderVisao(expl){
+  const byType = {};
+  D.files.forEach(f => { (byType[f.type] ||= {novo:0,alterado:0,removido:0}); byType[f.type][f.kind]++; });
+  const types = TYPE_ORDER.filter(t => byType[t]);
+  const add = D.files.reduce((s,f)=>s+f.add,0), del = D.files.reduce((s,f)=>s+f.del,0);
+  const procs = D.files.filter(f => f.type==='Processo' && f.kind==='novo');
+  $('#v-visao').innerHTML = `
+    <div class="grid" style="margin-bottom:16px">
+      <div class="stat"><b>${D.files.length}</b><span>arquivos no diff</span></div>
+      <div class="stat"><b>${D.files.filter(f=>f.kind==='novo').length}</b><span>componentes novos</span></div>
+      <div class="stat"><b>${D.files.filter(f=>f.kind==='alterado').length}</b><span>componentes alterados</span></div>
+      <div class="stat"><b>${procs.length}</b><span>processos novos</span></div>
+      <div class="stat"><b><span style="color:var(--ok)">+${add.toLocaleString('pt-BR')}</span></b><span>linhas adicionadas · <span style="color:var(--del)">−${del.toLocaleString('pt-BR')}</span> removidas</span></div>
+    </div>
+    <div class="card"><h2>Resumo da demanda ${D.auto ? '<span class="pill">automático</span>' : ''}</h2>${(expl.match(/<!--resumo-->([\s\S]*?)<!--\/resumo-->/)||['',''])[1]}<p><a href="#" data-go="explicacao">${D.auto ? 'Ver a explicação automática →' : 'Ler a explicação completa →'}</a></p></div>
+    <div class="card"><h2>Componentes por tipo</h2><div class="tablewrap"><table>
+      <tr><th>Tipo</th><th>Novos</th><th>Alterados</th><th>Removidos</th></tr>
+      ${types.map(t => `<tr><td><a href="#" data-type="${esc(t)}">${esc(t)}</a></td><td>${byType[t].novo||'–'}</td><td>${byType[t].alterado||'–'}</td><td>${byType[t].removido||'–'}</td></tr>`).join('')}
+    </table></div></div>
+    ${procs.length ? `<div class="card"><h2>Processos novos</h2><div class="tablewrap"><table><tr><th>Processo</th><th>Nome de exibição</th></tr>
+      ${procs.map(p => `<tr><td><a href="#" data-file="${esc(p.path)}">${esc(stem(p.path))}</a></td><td>${esc(p.display||'')}</td></tr>`).join('')}</table></div></div>` : ''}`;
+}
+
+function renderExpl(expl){
+  const box = $('#v-explicacao');
+  box.innerHTML = expl || '';
+  // "arquivo:caminho" escrito como texto vira link para o arquivo na aba Código
+  const caminhos = D.files.map(f => f.path).sort((a,b) => b.length - a.length);
+  const walker = document.createTreeWalker(box, NodeFilter.SHOW_TEXT);
+  const alvos = [];
+  while (walker.nextNode()){ const n = walker.currentNode; if (n.nodeValue.includes('arquivo:') && !n.parentElement.closest('a')) alvos.push(n); }
+  for (const n of alvos){
+    const txt = n.nodeValue, frag = document.createDocumentFragment();
+    let pos = 0, i;
+    while ((i = txt.indexOf('arquivo:', pos)) >= 0){
+      const resto = txt.slice(i + 8), p = caminhos.find(c => resto.startsWith(c));
+      if (!p){ frag.append(txt.slice(pos, i + 8)); pos = i + 8; continue; }
+      frag.append(txt.slice(pos, i));
+      const a = document.createElement('a'); a.href = '#'; a.dataset.file = p; a.textContent = base(p);
+      frag.append(a); pos = i + 8 + p.length;
+    }
+    frag.append(txt.slice(pos));
+    n.replaceWith(frag);
+  }
+}
+
+function renderFluxos(){
+  const procs = D.files.filter(f => f.type==='Processo').map(f => ({f, flow: processFlow(f)})).filter(x => x.flow.length);
+  if (!procs.length){ $('#v-fluxos').innerHTML = '<div class="empty">Nenhum fluxo de processo encontrado no diff.</div>'; return; }
+  $('#v-fluxos').innerHTML = `<p class="muted">Fluxos lidos dos arquivos <code>.process</code> do diff. Em processos só alterados, aparecem apenas os trechos que mudaram.</p>` +
+    procs.map(({f, flow}) => `
+    <div class="card">
+      <h2>${esc(f.display || stem(f.path))} <span class="pill ${f.kind}">${f.kind}</span></h2>
+      <p class="muted" style="margin-top:-6px"><a href="#" data-file="${esc(f.path)}">${esc(stem(f.path))}</a></p>
+      <div class="flow">${flow.map(t => `<div class="tr">${nodeHtml(t.from)}<div class="s">${t.st ? `—<b>${esc(t.st)}</b>→` : '——→'}</div>${nodeHtml(t.to)}</div>`).join('')}</div>
+    </div>`).join('');
+}
+
+function matches(f, q, inCode){
+  if (!q) return true;
+  const s = (f.path+' '+(f.display||'')).toLowerCase();
+  if (s.includes(q)) return true;
+  if (inCode){ f._txt ||= f.lines.join('\n').toLowerCase(); return f._txt.includes(q); }
+  return false;
+}
+function renderGroups(){
+  const q = $('#q').value.trim().toLowerCase(), kind = $('#fKind').value, inCode = $('#fCode').checked;
+  const fs = D.files.filter(f => (!kind || f.kind===kind) && matches(f,q,inCode));
+  const groups = TYPE_ORDER.map(t => [t, fs.filter(f => f.type===t)]).filter(g => g[1].length);
+  $('#groups').innerHTML = groups.length ? groups.map(([t, list]) => `
+    <div class="card group" style="padding:12px 0 4px"><h3 style="margin:0 18px 8px">${esc(t)} <span class="pill">${list.length}</span></h3>
+      ${list.map(f => rowHtml(f)).join('')}
+    </div>`).join('') : '<div class="empty">Nada encontrado.</div>';
+}
+function rowHtml(f, sel){
+  return `<div class="row${sel?' sel':''}" data-file="${esc(f.path)}">
+    <div class="nm"><b>${esc(f.display || stem(f.path))}</b><small>${esc(f.display ? stem(f.path)+' · ' : '')}${esc(f.path.replace(/\/[^/]+$/,''))}</small></div>
+    <span class="pill ${f.kind}">${f.kind}</span>
+    <span class="delta"><span class="a">+${f.add}</span> <span class="r">−${f.del}</span></span></div>`;
+}
+
+function renderCommits(){
+  const secs = [...new Set(D.files.map(f => f.section).filter(Boolean))];
+  $('#v-commits').innerHTML = `<div class="card"><h2>Commits da demanda</h2>${D.commits.length ? `<div class="tablewrap"><table><tr><th>Commit</th><th>Mensagem</th></tr>
+    ${D.commits.map(c => `<tr><td class="mono">${esc(c.hash)}</td><td>${esc(c.msg)}</td></tr>`).join('')}</table></div>` : '<p class="muted">O diff não traz lista de commits.</p>'}</div>
+    ${secs.length ? `<div class="card"><h2>Blocos do diff</h2><div class="tablewrap"><table><tr><th>Bloco</th><th>Arquivos</th></tr>${secs.map(s => `<tr><td>${esc(s)}</td><td>${D.files.filter(f=>f.section===s).length}</td></tr>`).join('')}</table></div></div>` : ''}`;
+}
+
+function renderFileList(){
+  $('#filelist').innerHTML = TYPE_ORDER.map(t => {
+    const list = D.files.filter(f => f.type===t); if (!list.length) return '';
+    return `<div style="padding:10px 12px 4px" class="muted"><small><b>${esc(t)}</b></small></div>` + list.map(f => rowHtml(f, selected===f)).join('');
+  }).join('');
+}
+
+const PAGE = 3000;
+function openFile(path, hl){
+  const f = D.files.find(x => x.path === path); if (!f) return;
+  selected = f; showView('codigo'); renderFileList();
+  const r = document.querySelector(`#filelist .row[data-file="${CSS.escape(path)}"]`); if (r) r.scrollIntoView({block:'nearest'});
+  const q = hl || ($('#fCode').checked ? $('#q').value.trim() : '');
+  $('#codepane').innerHTML = `<div class="codehead"><b>${esc(f.display || f.name)}</b><span class="pill ${f.kind}">${f.kind}</span><span class="pill">${esc(f.type)}</span>
+     <span class="delta"><span class="a">+${f.add}</span> <span class="r">−${f.del}</span></span><span class="muted mono" style="font-size:12px;width:100%;overflow-wrap:anywhere">${esc(f.path)}</span></div>
+     <div class="code" id="code"></div>`;
+  if (f.binary || !f.lines.length){ $('#code').innerHTML = '<div class="empty" style="white-space:normal">Arquivo binário ou sem conteúdo de texto (por exemplo, um .jar gerado no build).</div>'; return; }
+  let shown = 0;
+  const re = q ? new RegExp(q.replace(/[.*+?^${}()|[\]\\]/g,'\\$&'),'gi') : null;
+  const more = () => {
+    const box = $('#code'), part = f.lines.slice(shown, shown+PAGE);
+    const html = part.map(l => {
+      const c = l.startsWith('@@') ? 'h' : l[0]==='+' ? 'a' : l[0]==='-' ? 'r' : '';
+      let t = esc(l); if (re) t = t.replace(re, m => `<mark>${m}</mark>`);
+      return `<div class="${c}">${t || ' '}</div>`;
+    }).join('');
+    const old = box.querySelector('.more'); if (old) old.remove();
+    box.insertAdjacentHTML('beforeend', html); shown += part.length;
+    if (shown < f.lines.length){
+      box.insertAdjacentHTML('beforeend', `<div class="more"><button class="btn">Mostrar mais (${(f.lines.length-shown).toLocaleString('pt-BR')} linhas restantes)</button></div>`);
+      box.querySelector('.more button').onclick = more;
+    }
+  };
+  more();
+}
+
+/* ===== Navegação ===== */
+function showView(v){
+  document.querySelectorAll('.view').forEach(s => s.classList.toggle('on', s.id === 'v-'+v));
+  document.querySelectorAll('#tabs button').forEach(b => b.classList.toggle('on', b.dataset.v === v));
+  window.scrollTo({top:0});
+}
+$('#tabs').onclick = e => { const b = e.target.closest('button'); if (b) showView(b.dataset.v); };
+document.addEventListener('click', e => {
+  const a = e.target.closest('[data-file],[data-go],[data-type]'); if (!a || a.closest('#tabs')) return;
+  e.preventDefault();
+  if (a.dataset.file) openFile(a.dataset.file);
+  else if (a.dataset.go) showView(a.dataset.go);
+  else if (a.dataset.type){ $('#q').value=''; $('#fKind').value=''; renderGroups(); showView('componentes');
+    const h=[...document.querySelectorAll('#groups h3')].find(x=>x.textContent.startsWith(a.dataset.type)); if(h) h.scrollIntoView(); }
+});
+$('#q').oninput = renderGroups; $('#fKind').onchange = renderGroups; $('#fCode').onchange = renderGroups;
+
+/* ===== Abrir arquivo ===== */
+function loadText(text){
+  if (!/^diff --git /m.test(text)){ alert('Este arquivo não parece um diff do Git (não encontrei linhas "diff --git").'); return; }
+  D = parse(text); render();
+  showView('explicacao');
+}
+function loadFile(file){ const r = new FileReader(); r.onload = () => loadText(r.result); r.readAsText(file, 'utf-8'); }
+$('#btnOpen').onclick = () => $('#file').click();
+$('#file').onchange = e => { if (e.target.files[0]) loadFile(e.target.files[0]); e.target.value=''; };
+['dragover','dragenter'].forEach(ev => document.addEventListener(ev, e => { e.preventDefault(); document.body.style.outline='3px dashed var(--accent)'; }));
+['dragleave','drop'].forEach(ev => document.addEventListener(ev, e => { e.preventDefault(); document.body.style.outline=''; }));
+document.addEventListener('drop', e => { const f = e.dataTransfer.files[0]; if (f) loadFile(f); });
+
+function loadDemo(){
+  const b64 = $('#demoData').textContent.trim();
+  if (!b64 || b64.startsWith('__')) return false;
+  const bytes = Uint8Array.from(atob(b64), c => c.charCodeAt(0));
+  loadText(new TextDecoder('utf-8').decode(bytes));
+  return true;
+}
+$('#btnDemo').onclick = loadDemo;
+document.getElementById('semjs').remove();
+if (loadDemo()) { $('#btnDemo').hidden = false; $('#btnDemo').textContent = D.name; $('#btnDemo').title = 'Voltar para a demanda embutida'; }
+else {
+  $('#tabExpl').hidden = true;
+  $('#v-visao').innerHTML = `<div class="drop" id="drop"><p><b>Arraste aqui o arquivo de diff da demanda</b></p><p>ou use o botão “Abrir diff”. O arquivo é lido só no seu navegador, nada é enviado.</p></div>`;
+}
+</script>
+</body>
+</html>
